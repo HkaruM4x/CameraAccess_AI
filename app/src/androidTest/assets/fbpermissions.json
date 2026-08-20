@@ -1,0 +1,10 @@
+{
+  "packages": [
+    {
+      "name": "com.meta.wearable.dat.externalsampleapps.cameraaccess",
+      "permissions": [
+        "com.meta.wearable.acdc.service.fbpermission.ACDC_SERVICE"
+      ]
+    }
+  ]
+}
