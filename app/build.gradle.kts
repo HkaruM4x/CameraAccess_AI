@@ -68,6 +68,7 @@ dependencies {
   implementation(libs.mwdat.mockdevice)
   implementation(libs.coil.compose)
   implementation(libs.coil.video)
+  implementation(libs.mlkit.face.detection)
   androidTestImplementation(libs.androidx.ui.test.junit4)
   androidTestImplementation(libs.androidx.test.uiautomator)
   androidTestImplementation(libs.androidx.test.rules)

@@ -16,6 +16,8 @@
 
     <!-- Stream Screen -->
     <string name="live_stream" description="Live Stream">Live stream</string>
+    <string name="face_blur_on" description="Face blur toggle — currently on">Blur: ON</string>
+    <string name="face_blur_off" description="Face blur toggle — currently off">Blur: OFF</string>
 
     <!-- Non Stream Screen -->
     <string name="camera_access_icon_description" description="Camera Access icon description">Camera Access icon</string>

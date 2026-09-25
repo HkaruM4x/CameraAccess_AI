@@ -112,6 +112,14 @@ fun StreamScreen(
             modifier = Modifier.weight(1f),
         )
 
+        SwitchButton(
+            label =
+                if (streamUiState.isFaceBlurEnabled) stringResource(R.string.face_blur_on)
+                else stringResource(R.string.face_blur_off),
+            onClick = { streamViewModel.toggleFaceBlur() },
+            modifier = Modifier.weight(1f),
+        )
+
         // Photo capture button
         CaptureButton(
             onClick = { streamViewModel.capturePhoto() },

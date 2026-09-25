@@ -23,4 +23,5 @@ data class StreamUiState(
     val isShareDialogVisible: Boolean = false,
     val isCapturing: Boolean = false,
     val isRecording: Boolean = false,
+    val isFaceBlurEnabled: Boolean = false,
 )

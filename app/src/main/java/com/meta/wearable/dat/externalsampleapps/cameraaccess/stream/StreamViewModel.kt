@@ -81,6 +81,7 @@ class StreamViewModel(
   private var presentationQueue: PresentationQueue? = null
 
   private var videoRecorder: VideoRecorder? = null
+  private var faceBlurProcessor: FaceBlurProcessor? = null
 
   fun startStream() {
     videoJob?.cancel()
@@ -88,6 +89,7 @@ class StreamViewModel(
     presentationQueue?.stop()
     presentationQueue = null
     videoRecorder = VideoRecorder(getApplication())
+    faceBlurProcessor = FaceBlurProcessor()
 
     // Initialize presentation queue - frames are presented based on timestamp, not arrival time
     val queue =
@@ -138,7 +140,13 @@ class StreamViewModel(
     val recorder = videoRecorder
     videoRecorder = null
     viewModelScope.launch(Dispatchers.IO) { recorder?.stop() }
+    faceBlurProcessor?.close()
+    faceBlurProcessor = null
     _uiState.update { INITIAL_STATE }
+  }
+
+  fun toggleFaceBlur() {
+    _uiState.update { it.copy(isFaceBlurEnabled = !it.isFaceBlurEnabled) }
   }
 
   fun capturePhoto() {
@@ -222,10 +230,16 @@ class StreamViewModel(
             videoFrame.height,
         )
     if (bitmap != null) {
-      presentationQueue?.enqueue(
-          bitmap,
-          videoFrame.presentationTimeUs,
-      )
+      // Apply face blur if enabled. process() returns a new bitmap when faces are detected,
+      // or null when no faces are found yet (fall back to the original).
+      val blurred =
+          if (_uiState.value.isFaceBlurEnabled) faceBlurProcessor?.process(bitmap) else null
+      val frameToEnqueue = blurred ?: bitmap
+
+      presentationQueue?.enqueue(frameToEnqueue, videoFrame.presentationTimeUs)
+
+      // Recycle the blurred copy — PresentationQueue has already cloned it internally.
+      blurred?.recycle()
     } else {
       Log.e(TAG, "Failed to convert YUV to bitmap")
     }
