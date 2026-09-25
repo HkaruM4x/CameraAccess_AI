@@ -1,13 +1,19 @@
 # Camera Access App
 
-A sample Android application demonstrating integration with Meta Wearables Device Access Toolkit. This app showcases streaming video from Meta AI glasses, capturing photos, and managing connection states.
+A sample Android application demonstrating integration with Meta Wearables Device Access Toolkit. This app showcases streaming video from Meta AI glasses, capturing photos, recording video, and managing connection states.
 
 ## Features
 
 - Connect to Meta AI glasses
-- Stream camera feed from the device
-- Capture photos from glasses
-- Share captured photos
+- Stream camera feed from the device (MEDIUM quality, 24 fps)
+- Timestamp-based frame presentation queue for smooth playback
+- Background video frame processing via `Dispatchers.Default`
+- Capture photos from glasses (supports both Bitmap and HEIC formats with EXIF orientation handling)
+- Save captured photos to device gallery (`Pictures/CameraAccess`)
+- Share captured photos via Android share sheet
+- Record video from the camera stream
+- Import media from the device
+- Mock device kit support for development without physical hardware
 
 ## Prerequisites
 
@@ -15,7 +21,7 @@ A sample Android application demonstrating integration with Meta Wearables Devic
 - JDK 11 or newer
 - Android SDK 31+ (Android 12.0+)
 - Meta Wearables Device Access Toolkit (included as a dependency)
-- A Meta AI glasses device for testing (optional for development)
+- A Meta AI glasses device for testing (optional — use Mock Device Kit for development)
 
 ## Building the app
 
@@ -32,11 +38,18 @@ A sample Android application demonstrating integration with Meta Wearables Devic
 1. Turn 'Developer Mode' on in the Meta AI app.
 1. Launch the app.
 1. Press the "Connect" button to complete app registration.
-1. Once connected, the camera stream from the device will be displayed
+1. Once connected, the camera stream from the device will be displayed.
 1. Use the on-screen controls to:
    - Capture photos
    - View and save captured photos
+   - Share captured photos
+   - Record video from the stream
+   - Import media from the device
    - Disconnect from the device
+
+## Mock Device Kit
+
+The app includes a Mock Device Kit screen for testing streaming and photo capture functionality without physical Meta AI glasses hardware. This is useful during development and UI iteration.
 
 ## Troubleshooting
 

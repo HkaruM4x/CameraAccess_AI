@@ -92,7 +92,7 @@ class StreamViewModel(
     // Initialize presentation queue - frames are presented based on timestamp, not arrival time
     val queue =
         PresentationQueue(
-            bufferDelayMs = 100L,
+            bufferDelayMs = 75L,
             maxQueueSize = 15,
             onFrameReady = { frame ->
               _uiState.update {
@@ -107,10 +107,10 @@ class StreamViewModel(
         Wearables.startStreamSession(
                 getApplication(),
                 deviceSelector,
-                StreamConfiguration(videoQuality = VideoQuality.HIGH, 24),
+                StreamConfiguration(videoQuality = VideoQuality.MEDIUM, 24),
             )
             .also { streamSession = it }
-    videoJob = viewModelScope.launch { streamSession.videoStream.collect { handleVideoFrame(it) } }
+    videoJob = viewModelScope.launch(Dispatchers.Default) { streamSession.videoStream.collect { handleVideoFrame(it) } }
     stateJob =
         viewModelScope.launch {
           streamSession.state.collect { currentState ->
