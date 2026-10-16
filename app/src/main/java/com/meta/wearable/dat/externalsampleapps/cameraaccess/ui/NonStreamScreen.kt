@@ -42,6 +42,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -56,6 +58,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.meta.wearable.dat.core.types.Permission
@@ -79,6 +82,7 @@ fun NonStreamScreen(
   val isDisconnectEnabled = uiState.registrationState is RegistrationState.Registered
   val activity = LocalActivity.current
   val context = LocalContext.current
+  var sessionContext by remember { mutableStateOf("") }
 
   MaterialTheme(colorScheme = darkColorScheme()) {
     Box(
@@ -177,6 +181,41 @@ fun NonStreamScreen(
         SwitchButton(
             label = stringResource(R.string.import_media_button_title),
             onClick = { viewModel.navigateToImportMedia() },
+        )
+
+        // AI Analyst session context — optional prompt the user types before starting AI mode.
+        // It gets sent alongside every frame analysis for the whole session.
+        OutlinedTextField(
+            value = sessionContext,
+            onValueChange = { sessionContext = it },
+            placeholder = {
+              Text(
+                  text = "What should the AI focus on? (optional)",
+                  color = Color.White.copy(alpha = 0.5f),
+                  fontSize = 13.sp,
+              )
+            },
+            colors =
+                OutlinedTextFieldDefaults.colors(
+                    focusedTextColor = Color.White,
+                    unfocusedTextColor = Color.White,
+                    focusedBorderColor = Color.White.copy(alpha = 0.6f),
+                    unfocusedBorderColor = Color.White.copy(alpha = 0.3f),
+                ),
+            modifier = Modifier.fillMaxWidth(),
+            maxLines = 2,
+        )
+
+        // AI Analyst Button
+        SwitchButton(
+            label = "AI Analyst",
+            onClick = {
+              viewModel.navigateToAIStreaming(
+                  onRequestWearablesPermission = onRequestWearablesPermission,
+                  sessionContext = sessionContext,
+              )
+            },
+            enabled = uiState.hasActiveDevice,
         )
       }
 

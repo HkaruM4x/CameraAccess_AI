@@ -57,6 +57,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.meta.wearable.dat.core.types.Permission
 import com.meta.wearable.dat.core.types.PermissionStatus
 import com.meta.wearable.dat.externalsampleapps.cameraaccess.BuildConfig
+import com.meta.wearable.dat.externalsampleapps.cameraaccess.aistream.AIStreamScreen
 import com.meta.wearable.dat.externalsampleapps.cameraaccess.wearables.WearablesViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -84,6 +85,11 @@ fun CameraAccessScaffold(
         uiState.isStreaming ->
             StreamScreen(
                 wearablesViewModel = viewModel,
+            )
+        uiState.isAIStreaming ->
+            AIStreamScreen(
+                wearablesViewModel = viewModel,
+                sessionContext = uiState.aiSessionContext,
             )
         uiState.isImportingMedia ->
             ImportMediaScreen(

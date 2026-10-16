@@ -154,8 +154,36 @@ class WearablesViewModel(application: Application) : AndroidViewModel(applicatio
     }
   }
 
+  fun navigateToAIStreaming(
+      onRequestWearablesPermission: suspend (Permission) -> PermissionStatus,
+      sessionContext: String = "",
+  ) {
+    viewModelScope.launch {
+      val permission = Permission.CAMERA
+      val result = Wearables.checkPermissionStatus(permission)
+
+      result.onFailure { error, _ ->
+        setRecentError("Permission check error: ${error.description}")
+        return@launch
+      }
+
+      val permissionStatus = result.getOrNull()
+      if (permissionStatus == PermissionStatus.Granted) {
+        _uiState.update { it.copy(isAIStreaming = true, aiSessionContext = sessionContext) }
+        return@launch
+      }
+
+      val requestedPermissionStatus = onRequestWearablesPermission(permission)
+      when (requestedPermissionStatus) {
+        PermissionStatus.Denied -> setRecentError("Permission denied")
+        PermissionStatus.Granted ->
+            _uiState.update { it.copy(isAIStreaming = true, aiSessionContext = sessionContext) }
+      }
+    }
+  }
+
   fun navigateToDeviceSelection() {
-    _uiState.update { it.copy(isStreaming = false, isImportingMedia = false) }
+    _uiState.update { it.copy(isStreaming = false, isAIStreaming = false, isImportingMedia = false) }
   }
 
   fun navigateToImportMedia() {

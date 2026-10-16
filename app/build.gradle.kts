@@ -6,10 +6,17 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+import java.util.Properties
+
 plugins {
   alias(libs.plugins.android.application)
   alias(libs.plugins.jetbrains.kotlin.android)
   alias(libs.plugins.compose.compiler)
+}
+
+val localProperties = Properties().apply {
+  val f = rootProject.file("local.properties")
+  if (f.exists()) load(f.inputStream())
 }
 
 android {
@@ -19,13 +26,15 @@ android {
   buildFeatures { buildConfig = true }
 
   defaultConfig {
-    applicationId = "com.meta.wearable.dat.externalsampleapps.cameraaccess"
+    applicationId = "com.meta.wearable.dat.externalsampleapps.cameraaccessai"
     minSdk = 31
     targetSdk = 34
     versionCode = 1
     versionName = "1.0"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    buildConfigField("String", "OPENAI_API_KEY", "\"${localProperties.getProperty("openai_api_key", "")}\"")
+
     vectorDrawables { useSupportLibrary = true }
   }
 
@@ -69,6 +78,7 @@ dependencies {
   implementation(libs.coil.compose)
   implementation(libs.coil.video)
   implementation(libs.mlkit.face.detection)
+  implementation(libs.okhttp)
   androidTestImplementation(libs.androidx.ui.test.junit4)
   androidTestImplementation(libs.androidx.test.uiautomator)
   androidTestImplementation(libs.androidx.test.rules)
