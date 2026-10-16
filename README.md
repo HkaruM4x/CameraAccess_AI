@@ -1,41 +1,58 @@
 # CameraAccess_AI
 
-An Android application that connects to **Meta Ray-Ban smart glasses** and uses the live camera feed to perform real-time AI-powered scene analysis via OpenAI GPT-4o. Built on top of Meta's Device Access Toolkit (DAT) SDK.
+> **See the world through AI-powered smart glasses.**
+
+An Android application that connects to **Meta Ray-Ban smart glasses** and uses the live camera feed to perform **real-time AI scene analysis** using OpenAI GPT-4o Vision. Point your glasses at anything — food, objects, environments — and receive instant AI insights directly on your phone screen.
 
 ---
 
-## What it does
+## What makes this AI-powered
 
-The app has two modes:
+Every frame captured by the glasses is analyzed by **OpenAI GPT-4o**, one of the most capable vision AI models available. The AI doesn't just describe what it sees — it reasons about it:
 
-### Camera Mode
-Standard camera access features using the Meta DAT SDK:
-- Live video stream from the glasses displayed on your phone
-- Photo capture (Bitmap + HEIC with EXIF orientation handling), saved to gallery
-- Video recording with microphone audio (H.264 + AAC MP4), saved to gallery
-- Toggleable face blur using Google ML Kit face detection
-- Import media from the glasses
-- Mock Device Kit support for testing without physical hardware
+- 🍔 **Food** → estimates calories, macronutrients, portion size
+- 🏪 **Environments** → describes the scene and provides relevant context
+- 🧪 **Objects** → identifies items and shares useful information about them
+- 💬 **Your questions** → set a focus before you start (e.g. *"I'm tracking my macros today"*) and the AI tailors every response to your goal
+
+The AI updates its analysis every 3 seconds, creating a continuous live commentary of what your glasses see — hands-free.
+
+---
+
+## How it works
+
+```
+You wear Meta Ray-Ban glasses
+        ↓
+Glasses camera captures what you see
+        ↓
+Android app receives the live video feed
+        ↓  (one frame every 3 seconds)
+Frame compressed and sent to OpenAI GPT-4o Vision API
+        ↓
+AI analyzes the image and responds in 2–3 sentences
+        ↓
+Response appears as a live text overlay on your phone screen
+```
+
+---
+
+## Modes
 
 ### AI Analyst Mode ✨
-A live AI analysis mode powered by OpenAI GPT-4o Vision:
-- Streams the live camera feed from the glasses
-- Samples one frame every 3 seconds and sends it to GPT-4o for analysis
-- Displays AI responses as a text overlay on the live video
-- Supports an optional **session context** — type a focus prompt before starting (e.g. *"I'm tracking my calories today"*) and the AI tailors every response to that goal
-- Example use case: point the glasses at food and receive a real-time nutritional estimate — calories, macros, portion size
+The core feature of this app. Live AI analysis of everything your glasses see:
+- Stream the glasses camera feed to your phone
+- AI analyses one frame every 3 seconds using GPT-4o Vision
+- Results appear as a text card overlay on the live video
+- Optional **session context** — type what you want the AI to focus on before you start, and it remembers that goal for the entire session
 
----
+**Example session contexts:**
+- *"I have a nut allergy, flag anything that might contain nuts"*
+- *"I'm a student studying architecture, describe what you see in detail"*
+- *"I'm counting calories, estimate the nutritional value of any food"*
 
-## Screenshots / Flow
-
-```
-HomeScreen (register with Meta AI)
-    ↓
-NonStreamScreen (glasses connected)
-    ├── Start Stream     → live camera feed
-    └── AI Analyst       → type optional context → live AI analysis overlay
-```
+### Camera Mode
+Standard camera access features — stream, capture photos, record video, and import media from the glasses. Built on Meta's Device Access Toolkit (DAT) SDK.
 
 ---
 
@@ -45,7 +62,7 @@ NonStreamScreen (glasses connected)
 - JDK 11 or newer
 - Android SDK 31+ (Android 12.0+)
 - Meta Ray-Ban glasses with Developer Mode enabled
-- OpenAI API key (for AI Analyst mode)
+- An OpenAI API key (for AI Analyst mode)
 - Meta Wearables Device Access Toolkit (included as a dependency)
 
 ---
@@ -55,13 +72,13 @@ NonStreamScreen (glasses connected)
 ### 1. Clone the repo
 
 ```bash
-git clone https://github.com/HkaruM4x/CameraAccess.git
-cd CameraAccess
+git clone https://github.com/HkaruM4x/CameraAccess_AI.git
+cd CameraAccess_AI
 ```
 
 ### 2. Configure `local.properties`
 
-Create or edit `local.properties` in the project root (this file is gitignored — never commit it):
+Create or edit `local.properties` in the project root. **This file is gitignored — never commit it as it contains your API keys.**
 
 ```properties
 sdk.dir=/path/to/your/Android/sdk
@@ -70,26 +87,49 @@ github_token=YOUR_META_DAT_GITHUB_TOKEN
 openai_api_key=YOUR_OPENAI_API_KEY
 ```
 
-- `username` and `github_token` — from the [Meta Wearables DAT setup guide](https://wearables.developer.meta.com/docs/getting-started-toolkit/#sdk-for-android-setup)
+- `username` + `github_token` — from the [Meta Wearables DAT setup guide](https://wearables.developer.meta.com/docs/getting-started-toolkit/#sdk-for-android-setup)
 - `openai_api_key` — from [platform.openai.com](https://platform.openai.com)
 
 ### 3. Sync and build
 
 - Open the project in Android Studio
 - Click **File → Sync Project with Gradle Files**
-- Click **Run → Run app** with your Android phone connected via USB
+- Connect your Android phone via USB with USB Debugging enabled
+- Click **Run → Run app**
 
-### 4. On the phone
+### 4. Enable Developer Mode on your glasses
 
-1. Enable Developer Options on your Android phone (tap Build Number 7 times in Settings → About Phone)
-2. Enable USB Debugging (Settings → Developer Options → USB Debugging)
-3. Connect via USB cable — accept the "Allow USB debugging?" prompt
+1. Open the **Meta AI app** on your phone
+2. Go to your Ray-Ban glasses settings
+3. Enable **Developer Mode**
+4. Enable **SDK access**
 
-### 5. On the glasses
+---
 
-1. Open the Meta AI app on your phone
-2. Enable Developer Mode for your Ray-Ban glasses
-3. Enable SDK access in the developer settings
+## User Flow
+
+```
+1. Launch app on your Android phone
+2. Register the app with Meta AI (one-time setup)
+3. Put on your Ray-Ban glasses
+4. On the NonStream screen — glasses connect automatically via Bluetooth
+5. Optional: type a session context (e.g. "Identify food and estimate calories")
+6. Tap "AI Analyst"
+7. App requests camera permission from your glasses
+8. Live video feed appears on your phone with AI analysis overlay
+   ┌─────────────────────────────────┐
+   │      [live glasses feed]        │
+   │                    ● Analyzing… │
+   │ ┌─────────────────────────────┐ │
+   │ │ "I can see a Caesar salad   │ │
+   │ │  with grilled chicken.      │ │
+   │ │  ~380 cal, 32g protein."    │ │
+   │ └─────────────────────────────┘ │
+   │                                 │
+   │       [ Stop AI Stream ]        │
+   └─────────────────────────────────┘
+9. Tap "Stop AI Stream" when done
+```
 
 ---
 
@@ -98,69 +138,35 @@ openai_api_key=YOUR_OPENAI_API_KEY
 ```
 app/src/main/java/.../cameraaccess/
 │
-├── stream/                    # Camera mode (DAT SDK streaming, recording, face blur)
-│   ├── StreamViewModel.kt
-│   ├── StreamUiState.kt
-│   ├── StreamScreen.kt        (in ui/)
-│   ├── VideoRecorder.kt
-│   ├── FaceBlurProcessor.kt
-│   ├── PresentationQueue.kt
-│   └── YuvToBitmapConverter.kt
+├── aistream/                  # AI Analyst mode (isolated feature)
+│   ├── AIStreamViewModel.kt   # Manages stream + sends frames to AI
+│   ├── AIStreamUiState.kt     # Screen state (video, AI text, loading)
+│   ├── AIAnalystProcessor.kt  # OpenAI GPT-4o API caller (3s throttle)
+│   └── AIStreamScreen.kt      # UI: live video + AI text overlay
 │
-├── aistream/                  # AI Analyst mode (fully isolated)
-│   ├── AIStreamViewModel.kt
-│   ├── AIStreamUiState.kt
-│   ├── AIAnalystProcessor.kt  # OpenAI GPT-4o caller
-│   └── AIStreamScreen.kt      (in aistream/)
+├── stream/                    # Camera mode (DAT SDK streaming)
+│   ├── StreamViewModel.kt
+│   ├── VideoRecorder.kt       # H.264 + AAC MP4 recording
+│   ├── FaceBlurProcessor.kt   # ML Kit face detection + blur
+│   └── ...
 │
 ├── wearables/                 # Shared device/navigation state
-│   ├── WearablesViewModel.kt
-│   └── WearablesUiState.kt
-│
-└── ui/                        # Shared UI components and screens
-    ├── CameraAccessScaffold.kt
-    ├── HomeScreen.kt
-    ├── NonStreamScreen.kt
-    └── ...
+└── ui/                        # Shared screens and UI components
 ```
 
 ---
 
-## How the AI Feature Works
+## Tech Stack
 
-```
-Ray-Ban glasses (camera)
-    ↓  Bluetooth / DAT SDK
-Android app receives VideoFrame (I420 YUV)
-    ↓  YuvToBitmapConverter
-Bitmap
-    ↓  AIAnalystProcessor (throttled to 1 frame per 3 seconds)
-Compressed JPEG (60% quality, ~40-80KB)
-    ↓  Base64 encoded → HTTP POST via OkHttp
-OpenAI GPT-4o Vision API (detail: low, max_tokens: 120)
-    ↓  JSON response
-Text displayed as overlay card on AIStreamScreen
-```
-
-**Key design decisions:**
-- **3-second throttle** — balances responsiveness with API cost (~$0.06/min)
-- **60% JPEG quality** — sufficient for scene understanding, 40–80KB per frame
-- **`detail: low`** — OpenAI analyzes at 512×512 internally, ~3× cheaper than high detail
-- **Feature isolation** — AI mode lives in its own package and never touches stream/recording code
-
----
-
-## Dependencies
-
-| Library | Purpose |
+| Technology | Role |
 |---|---|
-| Meta Wearables DAT SDK | Connect to Ray-Ban glasses, receive video |
-| OpenAI GPT-4o (REST API) | AI scene analysis |
-| OkHttp 4.12 | HTTP client for OpenAI calls |
-| Jetpack Compose | UI framework |
-| Google ML Kit Face Detection | Face blur feature |
-| AndroidX ExifInterface | HEIC photo orientation correction |
-| Coil | Image loading for media import |
+| **OpenAI GPT-4o Vision** | AI scene analysis from camera frames |
+| **Meta Wearables DAT SDK** | Connect to Ray-Ban glasses, receive live video |
+| **OkHttp** | HTTP client for OpenAI API calls |
+| **Jetpack Compose** | Android UI framework |
+| **Kotlin Coroutines** | Async stream processing and network calls |
+| **Google ML Kit** | Face detection for blur feature |
+| **Android MediaCodec** | Hardware H.264/AAC video encoding |
 
 ---
 
@@ -168,11 +174,11 @@ Text displayed as overlay card on AIStreamScreen
 
 | Branch | Description |
 |---|---|
-| `main` | Stable base — original Meta DAT camera sample app |
+| `main` | Stable base — original Meta DAT camera sample |
 | `dev` | Active development — includes AI Analyst feature |
 
 ---
 
 ## License
 
-This source code is licensed under the license found in the [LICENSE](LICENSE) file in the root directory of this source tree.
+Licensed under the license found in the [LICENSE](LICENSE) file in the root directory of this source tree.
