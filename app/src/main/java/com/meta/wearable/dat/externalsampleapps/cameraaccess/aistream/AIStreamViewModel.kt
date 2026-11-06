@@ -9,6 +9,7 @@
 package com.meta.wearable.dat.externalsampleapps.cameraaccess.aistream
 
 import android.app.Application
+import android.speech.tts.TextToSpeech
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
@@ -22,6 +23,7 @@ import com.meta.wearable.dat.camera.types.VideoFrame
 import com.meta.wearable.dat.camera.types.VideoQuality
 import com.meta.wearable.dat.core.Wearables
 import com.meta.wearable.dat.externalsampleapps.cameraaccess.BuildConfig
+import com.meta.wearable.dat.externalsampleapps.cameraaccess.stream.FaceBlurProcessor
 import com.meta.wearable.dat.externalsampleapps.cameraaccess.stream.YuvToBitmapConverter
 import com.meta.wearable.dat.externalsampleapps.cameraaccess.wearables.WearablesViewModel
 import kotlinx.coroutines.Dispatchers
@@ -31,6 +33,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.util.Locale
 
 class AIStreamViewModel(
     application: Application,
@@ -53,8 +56,28 @@ class AIStreamViewModel(
   private var stateJob: Job? = null
 
   private var aiProcessor: AIAnalystProcessor? = null
+  private var tts: TextToSpeech? = null
+
+  // Blurs faces in every frame before it is uploaded. Always on in AI mode — no toggle,
+  // because these frames leave the device.
+  private var uploadBlur: FaceBlurProcessor? = null
 
   fun startStream() {
+    val blur = FaceBlurProcessor().also { uploadBlur = it }
+
+    // Speak a one-time intro so the user knows AI mode is live.
+    tts = TextToSpeech(getApplication()) { status ->
+      if (status == TextToSpeech.SUCCESS) {
+        tts?.language = Locale.US
+        tts?.speak(
+            "AI Analyst is now active. I'll analyze what you see every few seconds.",
+            TextToSpeech.QUEUE_FLUSH,
+            null,
+            "intro",
+        )
+      }
+    }
+
     // Set up the AI processor. It will receive every frame and decide internally
     // whether to fire an API call based on the 3-second throttle.
     aiProcessor =
@@ -62,6 +85,7 @@ class AIStreamViewModel(
             apiKey = BuildConfig.OPENAI_API_KEY,
             scope = viewModelScope,
             sessionContext = sessionContext,
+            sanitize = { bitmap -> blur.blurForUpload(bitmap) },
             onAnalyzing = {
               // Called the moment a frame is chosen for analysis — before the response arrives.
               // We flip isAnalyzing = true so the UI can show a "thinking" indicator immediately.
@@ -104,6 +128,9 @@ class AIStreamViewModel(
   }
 
   fun stopStream() {
+    tts?.stop()
+    tts?.shutdown()
+    tts = null
     videoJob?.cancel()
     videoJob = null
     stateJob?.cancel()
@@ -112,6 +139,8 @@ class AIStreamViewModel(
     streamSession = null
     aiProcessor?.close()
     aiProcessor = null
+    uploadBlur?.close()
+    uploadBlur = null
     _uiState.update { INITIAL_STATE }
   }
 
