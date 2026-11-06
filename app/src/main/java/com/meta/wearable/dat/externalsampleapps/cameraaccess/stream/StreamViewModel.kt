@@ -214,28 +214,35 @@ class StreamViewModel(
   }
 
   private fun handleVideoFrame(videoFrame: VideoFrame) {
-    val recorder = videoRecorder
-    if (recorder != null) {
-      if (!recorder.isRecording) {
-        recorder.start(videoFrame.width, videoFrame.height)
-        _uiState.update { it.copy(isRecording = true) }
-      }
-      recorder.encodeFrame(videoFrame.buffer, videoFrame.width, videoFrame.height, videoFrame.presentationTimeUs)
-    }
-
     val bitmap =
         YuvToBitmapConverter.convert(
             videoFrame.buffer,
             videoFrame.width,
             videoFrame.height,
         )
-    if (bitmap != null) {
-      // Apply face blur if enabled. process() returns a new bitmap when faces are detected,
-      // or null when no faces are found yet (fall back to the original).
-      val blurred =
-          if (_uiState.value.isFaceBlurEnabled) faceBlurProcessor?.process(bitmap) else null
-      val frameToEnqueue = blurred ?: bitmap
 
+    // Apply face blur if enabled. process() returns a new bitmap when faces are detected,
+    // or null when no faces are found yet (fall back to the original).
+    val blurred =
+        if (bitmap != null && _uiState.value.isFaceBlurEnabled) faceBlurProcessor?.process(bitmap)
+        else null
+
+    val recorder = videoRecorder
+    if (recorder != null) {
+      if (!recorder.isRecording) {
+        recorder.start(videoFrame.width, videoFrame.height)
+        _uiState.update { it.copy(isRecording = true) }
+      }
+      // Encode the blurred frame when blur is active so the saved video matches the preview.
+      if (blurred != null) {
+        recorder.encodeFrame(blurred, videoFrame.presentationTimeUs)
+      } else {
+        recorder.encodeFrame(videoFrame.buffer, videoFrame.width, videoFrame.height, videoFrame.presentationTimeUs)
+      }
+    }
+
+    if (bitmap != null) {
+      val frameToEnqueue = blurred ?: bitmap
       presentationQueue?.enqueue(frameToEnqueue, videoFrame.presentationTimeUs)
 
       // Recycle the blurred copy — PresentationQueue has already cloned it internally.
