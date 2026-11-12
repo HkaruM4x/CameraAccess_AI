@@ -10,6 +10,7 @@ package com.meta.wearable.dat.externalsampleapps.cameraaccess.stream
 
 import android.content.ContentValues
 import android.content.Context
+import android.graphics.Bitmap
 import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaCodec
@@ -213,13 +214,63 @@ internal class VideoRecorder(private val context: Context) {
     yuvData.get(i420Buffer, 0, expectedSize)
     yuvData.position(savedPos)
 
-    // Normalise timestamps
-    val effectivePtsUs: Long
-    if (firstPtsUs < 0) {
+    // I420 → NV12
+    System.arraycopy(i420Buffer, 0, nv12Buffer, 0, frameSize)
+    for (i in 0 until uvSize) {
+      nv12Buffer[frameSize + i * 2]     = i420Buffer[frameSize + i]
+      nv12Buffer[frameSize + i * 2 + 1] = i420Buffer[frameSize + uvSize + i]
+    }
+
+    submitNv12ToEncoder(codec, normalizeTimestamp(presentationTimeUs), presentationTimeUs)
+  }
+
+  /**
+   * Encodes one ARGB [Bitmap] frame. Used when face blur is active — the blurred bitmap is encoded
+   * instead of the raw YUV buffer so the saved video matches what is shown on screen.
+   */
+  fun encodeFrame(bitmap: Bitmap, presentationTimeUs: Long) {
+    val codec = videoEncoder ?: run { Log.w(TAG, "encodeFrame(bitmap): encoder is null"); return }
+    val width = bitmap.width
+    val height = bitmap.height
+    if (width != frameWidth || height != frameHeight) {
+      Log.w(TAG, "encodeFrame(bitmap): dimension mismatch got ${width}x${height}, expected ${frameWidth}x${frameHeight}")
+      return
+    }
+
+    // ARGB → NV12 (BT.601 full-range coefficients)
+    val pixels = IntArray(width * height)
+    bitmap.getPixels(pixels, 0, width, 0, 0, width, height)
+    val ySize = width * height
+
+    for (j in 0 until height) {
+      for (i in 0 until width) {
+        val pixel = pixels[j * width + i]
+        val r = (pixel shr 16) and 0xFF
+        val g = (pixel shr 8) and 0xFF
+        val b = pixel and 0xFF
+        nv12Buffer[j * width + i] = (((66 * r + 129 * g + 25 * b + 128) shr 8) + 16).coerceIn(16, 235).toByte()
+      }
+    }
+    for (j in 0 until height / 2) {
+      for (i in 0 until width / 2) {
+        val pixel = pixels[(j * 2) * width + (i * 2)]
+        val r = (pixel shr 16) and 0xFF
+        val g = (pixel shr 8) and 0xFF
+        val b = pixel and 0xFF
+        nv12Buffer[ySize + j * width + i * 2]     = (((-38 * r - 74 * g + 112 * b + 128) shr 8) + 128).coerceIn(0, 255).toByte()
+        nv12Buffer[ySize + j * width + i * 2 + 1] = (((112 * r - 94 * g - 18 * b + 128) shr 8) + 128).coerceIn(0, 255).toByte()
+      }
+    }
+
+    submitNv12ToEncoder(codec, normalizeTimestamp(presentationTimeUs), presentationTimeUs)
+  }
+
+  private fun normalizeTimestamp(presentationTimeUs: Long): Long {
+    return if (firstPtsUs < 0) {
       firstPtsUs = presentationTimeUs
       lastPtsUs = presentationTimeUs
       syntheticPtsUs = 0L
-      effectivePtsUs = 0L
+      0L
     } else {
       val delta = presentationTimeUs - lastPtsUs
       if (delta > 0) {
@@ -228,15 +279,12 @@ internal class VideoRecorder(private val context: Context) {
       } else {
         syntheticPtsUs += 1_000_000L / FRAME_RATE
       }
-      effectivePtsUs = syntheticPtsUs
+      syntheticPtsUs
     }
+  }
 
-    // I420 → NV12
-    System.arraycopy(i420Buffer, 0, nv12Buffer, 0, frameSize)
-    for (i in 0 until uvSize) {
-      nv12Buffer[frameSize + i * 2]     = i420Buffer[frameSize + i]
-      nv12Buffer[frameSize + i * 2 + 1] = i420Buffer[frameSize + uvSize + i]
-    }
+  private fun submitNv12ToEncoder(codec: MediaCodec, effectivePtsUs: Long, rawPtsUs: Long) {
+    val frameSize = frameWidth * frameHeight
 
     val inputIndex = codec.dequeueInputBuffer(10_000)
     if (inputIndex < 0) {
@@ -308,7 +356,7 @@ internal class VideoRecorder(private val context: Context) {
 
     framesEncoded++
     if (framesEncoded == 1 || framesEncoded % 30 == 0) {
-      Log.d(TAG, "Queued frame #$framesEncoded sdkPts=$presentationTimeUs effectivePts=$effectivePtsUs")
+      Log.d(TAG, "Queued frame #$framesEncoded sdkPts=$rawPtsUs effectivePts=$effectivePtsUs")
     }
 
     drainVideoEncoder(endOfStream = false)

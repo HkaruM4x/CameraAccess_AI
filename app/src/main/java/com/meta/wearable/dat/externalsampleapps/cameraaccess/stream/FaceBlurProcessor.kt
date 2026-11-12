@@ -13,10 +13,12 @@ import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Rect
 import android.util.Log
+import com.google.android.gms.tasks.Tasks
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.face.Face
 import com.google.mlkit.vision.face.FaceDetection
 import com.google.mlkit.vision.face.FaceDetectorOptions
+import java.util.concurrent.TimeUnit
 
 /**
  * Detects faces in video frames and applies a pixelation blur to the detected regions.
@@ -52,6 +54,9 @@ internal class FaceBlurProcessor {
     // Pixelation: face region is scaled down by this factor then back up (no bilinear filter).
     // Higher = more heavily pixelated / more privacy.
     private const val PIXELATION_FACTOR = 12
+
+    // ML Kit boxes are tight around the face; grow them 20% per side for uploaded frames.
+    private const val UPLOAD_BOX_PADDING = 0.2f
   }
 
   private val detector =
@@ -93,6 +98,48 @@ internal class FaceBlurProcessor {
     if (rects.isEmpty()) return null
 
     return pixelate(source, rects)
+  }
+
+  /**
+   * Fail-closed blur for frames that are about to LEAVE THE DEVICE (e.g. sent to a cloud LLM).
+   *
+   * Unlike [process], this runs detection synchronously on exactly this frame, so it never relies
+   * on stale boxes from earlier frames and never returns the raw frame just because detection
+   * hasn't run yet.
+   *
+   * - Returns a new bitmap with faces pixelated (boxes padded by [UPLOAD_BOX_PADDING] to cover
+   *   hair/ears), or an unmodified copy if no faces are present. Caller must recycle it.
+   * - Returns null if detection fails or times out. Callers MUST drop the frame in that case
+   *   rather than sending the original.
+   *
+   * Blocks the calling thread for the duration of detection — never call on the main thread.
+   */
+  fun blurForUpload(source: Bitmap, timeoutMs: Long = 1_000L): Bitmap? {
+    val snapshot = source.copy(Bitmap.Config.ARGB_8888, false)
+    return try {
+      val faces =
+          Tasks.await(
+              detector.process(InputImage.fromBitmap(snapshot, 0)),
+              timeoutMs,
+              TimeUnit.MILLISECONDS,
+          )
+      if (faces.isEmpty()) {
+        snapshot
+      } else {
+        val padded = faces.map { pad(it.boundingBox, UPLOAD_BOX_PADDING) }
+        pixelate(snapshot, padded).also { snapshot.recycle() }
+      }
+    } catch (e: Exception) {
+      Log.w(TAG, "Upload blur failed — frame will be dropped", e)
+      snapshot.recycle()
+      null
+    }
+  }
+
+  private fun pad(rect: Rect, fraction: Float): Rect {
+    val dx = (rect.width() * fraction).toInt()
+    val dy = (rect.height() * fraction).toInt()
+    return Rect(rect.left - dx, rect.top - dy, rect.right + dx, rect.bottom + dy)
   }
 
   /** Release the underlying ML Kit detector. Call when streaming stops. */
